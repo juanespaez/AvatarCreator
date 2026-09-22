@@ -57,6 +57,43 @@ The `refs/<category>/<piece_id>/` folder name *is* the label — no CSV or annot
 Adding a piece means dropping a PNG in `pieces/` and, ideally, a few real photos in `refs/`;
 nothing is retrained, the index is just rebuilt.
 
+Piece artwork, reference photos, and query photos are all `.gitignore`d — only the folder
+structure (via `.gitkeep`) is tracked in git. `refs/` in particular holds real photos of real
+people and should never end up in the repo's history.
+
+## Current asset status
+
+The `pieces/` bank was seeded from a scraped asset dump that turned out to be **three overlapping
+art-style packs** (Apple, Avatoon, Snapchat), each with partial and inconsistently-gendered
+category coverage. Two scoping decisions were made to organize it:
+
+- **Styles are merged, not kept separate.** Apple/Avatoon/Snapchat pieces for the same category
+  all compete in one flat pool (e.g. `pieces/eyes/`) rather than being indexed per style. The
+  original style (and gender, where the source had one) is preserved in the filename prefix for
+  traceability — `apple_01.png`, `avatoon_man_03.png`, `snapchat_woman_07.png` — but matching
+  treats them as one undifferentiated set. A composited avatar can therefore currently mix an
+  Apple-style nose with a Snapchat-style mouth; there's no style-consistency constraint yet.
+- **Only the notebook's original 8 categories are active.** `face_shape`, `eyes`, `eyebrows`,
+  `nose`, `mouth`, `beard`, `hair` are populated (counts below); `skin_tone` has **no piece
+  artwork yet** — it needs colour swatches, not scraped avatar art, and none were in the source
+  dump. Seven more categories from the same dump — **ears, teeth, eyelashes ("Pestañas"), age,
+  forehead marks, moles ("Lunares"), freckles ("Pecas")** — are parked under `parked/<slug>/`
+  rather than dropped, because the notebook has no `REGION_IDX`/`CROP_CFG`/`ENCODER` entries for
+  them yet. **Scaling to these is a known next step**, not a rejection — wiring one in means adding
+  a landmark index group, a crop config, and an encoder assignment in cells 6–7, the same way the
+  8 active categories are defined.
+
+| category | pieces |
+|---|---|
+| eyebrows | 33 |
+| mouth | 33 |
+| eyes | 32 |
+| hair | 32 |
+| beard | 25 |
+| face_shape | 12 |
+| nose | 11 |
+| skin_tone | 0 — needs swatch artwork |
+
 ## Notebook structure
 
 | Cell | Purpose |
