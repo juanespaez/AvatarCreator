@@ -37,3 +37,6 @@ artifacts/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Local Python environment for testing the pipeline outside Colab
+.venv/
