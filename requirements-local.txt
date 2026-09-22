@@ -1,0 +1,25 @@
+# CPU-only local equivalents of Pipeline.ipynb cell 1's Colab installs.
+# Verified working together on macOS arm64 / Python 3.12 as of 2026-09-21.
+#
+# Differences from the notebook's pinned Colab installs, and why:
+#   - onnxruntime (not onnxruntime-gpu): no CUDA locally, ArcFace runs on CPU.
+#   - onnx==1.16.0: insightface pulls in onnx unpinned, which resolves to a
+#     version requiring protobuf>=6.31.1 — that breaks mediapipe 0.10.14,
+#     which needs protobuf<5. Pinning onnx down keeps both happy.
+#   - protobuf==4.25.3: pinned explicitly for the same reason as above.
+#
+# Setup:
+#   /opt/homebrew/bin/python3.12 -m venv .venv
+#   .venv/bin/pip install -r requirements-local.txt
+
+opencv-python-headless==4.10.0.84
+mediapipe==0.10.14
+numpy==1.26.4
+scikit-image==0.24.0
+faiss-cpu==1.8.0
+matplotlib==3.11.2
+onnxruntime==1.18.0
+insightface==0.7.3
+open_clip_torch==2.24.0
+onnx==1.16.0
+protobuf==4.25.3
