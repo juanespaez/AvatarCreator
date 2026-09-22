@@ -40,3 +40,17 @@ artifacts/
 
 # Local Python environment for testing the pipeline outside Colab
 .venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Third-party/bundled dataset dumps dropped into queries/ for testing —
+# images, labels, and READMEs alike. These carry their own license/
+# provenance (e.g. RAF-DB is explicitly non-commercial-research-only) and
+# none of it belongs in this repo's history, unlike a lone query photo
+# (already covered by extension above).
+queries/CW_Dataset/
+queries/Personal_Dataset/
+queries/variables/
