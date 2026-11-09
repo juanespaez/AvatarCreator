@@ -54,3 +54,6 @@ __pycache__/
 queries/CW_Dataset/
 queries/Personal_Dataset/
 queries/variables/
+
+# Build output of `pip install -e .`
+*.egg-info/
