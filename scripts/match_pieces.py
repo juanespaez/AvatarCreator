@@ -1,12 +1,12 @@
 """
-Local, Colab-free mirror of Pipeline.ipynb cells 6-9: embed the pieces/ bank
-with ArcFace/CLIP, build a FAISS index per category, and match a query photo
-against it. MATCH_MODE is effectively always "direct" here since refs/ is
-still empty (see README's data contract) - this only tests photo-vs-drawing
-matching, not the reference-photo path that closes the domain gap.
+Local, Colab-free mirror of Pipeline.ipynb cells 6-9: embed either the
+pieces/ bank (direct mode) or the refs/ bank (reference mode) with
+ArcFace/CLIP, build a FAISS index per category, and match a query photo
+against it.
 
-Usage:
+Usage (a photo is a path, or just a name from queries/, extension optional):
     .venv/bin/python scripts/match_pieces.py <photo1> [photo2 ...]
+    .venv/bin/python scripts/match_pieces.py --mode reference <photo1> [photo2 ...]
 """
 import os
 
@@ -160,20 +160,25 @@ def _make_index(vecs, encoder):
     return ix
 
 
-def build_category(category, bank):
+def build_category(category, mode, items):
     import pickle
 
     enc = ENCODER[category]
-    cache = CACHE_DIR / f"{category}__{enc}__direct.pkl"
+    cache = CACHE_DIR / f"{category}__{enc}__{mode}.pkl"
     if cache.exists():
         with open(cache, "rb") as f:
             d = pickle.load(f)
         d["index"] = _make_index(d["vectors"], enc)
         return d
 
+    if mode == "direct":
+        get_crop = _prep_piece_image
+    else:
+        get_crop = lambda path: pc.crops_from_photo(path, categories=[category]).get(category)  # noqa: E731
+
     ids, crops, failed = [], [], 0
-    for piece_id, path in bank[category]:
-        img = _prep_piece_image(path)
+    for piece_id, path in items:
+        img = get_crop(path)
         if img is None:
             failed += 1
             continue
@@ -181,7 +186,7 @@ def build_category(category, bank):
         crops.append(img)
 
     vecs = embed(crops, enc) if crops else np.zeros((0, 512), np.float32)
-    d = dict(ids=ids, vectors=vecs, mode="direct", encoder=enc, n_failed=failed)
+    d = dict(ids=ids, vectors=vecs, mode=mode, encoder=enc, n_failed=failed)
     with open(cache, "wb") as f:
         pickle.dump(d, f)
     d["index"] = _make_index(vecs, enc)
@@ -278,27 +283,51 @@ def save_match_preview(photo_path, result, crops, bank, out_dir):
     print(f"  -> saved comparison: {dest}")
 
 
+def resolve_query(name):
+    """Accept a full path, or just a file name (extension optional) inside queries/."""
+    p = Path(name)
+    if p.exists():
+        return p
+    candidates = [pc.QUERIES_DIR / name] + [
+        pc.QUERIES_DIR / f"{name}{ext}" for ext in sorted(pc.IMG_EXT)
+    ]
+    for c in candidates:
+        if c.is_file():
+            return c
+    raise FileNotFoundError(f"No image {name!r} found (also looked in {pc.QUERIES_DIR})")
+
+
 def main():
     args = sys.argv[1:]
+    mode = "direct"
+    if "--mode" in args:
+        i = args.index("--mode")
+        mode = args[i + 1]
+        del args[i : i + 2]
+    if mode not in ("direct", "reference"):
+        print(f"Unknown --mode {mode!r}, expected 'direct' or 'reference'")
+        return
     if not args:
-        print("Usage: match_pieces.py <photo1> [photo2 ...]")
+        print("Usage: match_pieces.py [--mode direct|reference] <photo1> [photo2 ...]")
         return
 
     bank = pc.scan_bank()
+    source = bank if mode == "direct" else pc.scan_refs()
+    noun = "pieces" if mode == "direct" else "refs"
     indexes = {}
     for cat in pc.CATEGORIES:
-        if not bank[cat]:
-            print(f"skip {cat}: no pieces")
+        if not source[cat]:
+            print(f"skip {cat}: no {noun}")
             continue
-        print(f"building index: {cat} ({ENCODER[cat]}, {len(bank[cat])} pieces) ...", flush=True)
-        indexes[cat] = build_category(cat, bank)
+        print(f"building index: {cat} ({ENCODER[cat]}, {len(source[cat])} {noun}, mode={mode}) ...", flush=True)
+        indexes[cat] = build_category(cat, mode, source[cat])
         d = indexes[cat]
         print(f"  -> {len(d['ids'])} vectors, {d['n_failed']} failed")
 
     preview_dir = pc.ROOT / "_cache" / "previews"
     print()
     for photo in args:
-        build_avatar(photo, indexes, bank, preview_dir=preview_dir)
+        build_avatar(resolve_query(photo), indexes, bank, preview_dir=preview_dir)
         print()
 
 
