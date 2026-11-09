@@ -16,6 +16,7 @@ from avatar_creator.infrastructure.filesystem.filesystem_asset_repository import
 from avatar_creator.infrastructure.filesystem.project_paths import ProjectPaths
 from avatar_creator.infrastructure.imaging.opencv_image_loader import OpenCvImageLoader
 from avatar_creator.infrastructure.landmarks.mediapipe_landmark_detector import MediaPipeLandmarkDetector
+from avatar_creator.infrastructure.network.http_photo_downloader import HttpPhotoDownloader
 from avatar_creator.infrastructure.persistence.artifact_exporter import ArtifactExporter
 from avatar_creator.infrastructure.persistence.pickle_embedding_bank_store import PickleEmbeddingBankStore
 from avatar_creator.infrastructure.rendering.avatar_preview_renderer import AvatarPreviewRenderer
@@ -26,6 +27,7 @@ from avatar_creator.infrastructure.search.faiss_cosine_searcher import FaissCosi
 from avatar_creator.ports.asset_repository import AssetRepository
 from avatar_creator.ports.image_loader import ImageLoader
 from avatar_creator.ports.landmark_detector import LandmarkDetector
+from avatar_creator.ports.photo_downloader import PhotoDownloader
 from avatar_creator.ports.region_encoder import RegionEncoder
 from avatar_creator.ports.similarity_searcher import SimilaritySearcher
 
@@ -59,6 +61,10 @@ class PipelineContainer:
     @cached_property
     def landmark_detector(self) -> LandmarkDetector:
         return MediaPipeLandmarkDetector()
+
+    @cached_property
+    def photo_downloader(self) -> PhotoDownloader:
+        return HttpPhotoDownloader()
 
     @cached_property
     def assets(self) -> AssetRepository:
