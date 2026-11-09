@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avatar-creator"
+version = "0.1.0"
+description = "Photo -> Lego-style avatar via landmark crops, ArcFace/CLIP embeddings and FAISS search."
+requires-python = ">=3.10"
+# Runtime dependencies are deliberately NOT listed here: they are pinned (and explained) in
+# requirements-local.txt because insightface/onnxruntime/numpy/protobuf break against each
+# other when unpinned.
+dependencies = []
+
+[project.scripts]
+avatar-creator = "avatar_creator.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
