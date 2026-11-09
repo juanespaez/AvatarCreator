@@ -1,6 +1,7 @@
 # AvatarCreator
 
 correr python scripts\match_pieces.py curry
+.venv\Scripts\python.exe main.py mifoto
 
 1. Abre PowerShell y ve a la carpeta del proyecto:
 
@@ -165,6 +166,11 @@ Each region (`EyeRecognizer`, `EyebrowsRecognizer`, `NoseRecognizer`, `MouthReco
 declares its `RegionSpec` (landmarks, crop framing, encoder) and inherits everything else from
 `RegionRecognizer`. **Adding a region** = one `FaceRegion` member + one recognizer subclass + one line
 in `RecognizerRegistry`.
+
+**Quickest way:** open `main.py`, paste a direct link to a face photo (jpeg/png/webp) into `PHOTO`,
+and run `python main.py` (or `python main.py <url>`). It downloads the image into `queries/` and
+writes `<name>_match.png` and `<name>_avatar.png` to `_cache/previews/`. Every command below also
+accepts a URL, a path, or a bare name from `queries/`.
 
 ```powershell
 pip install -e . --no-deps                       # once, inside the venv (deps are in requirements-local.txt)
