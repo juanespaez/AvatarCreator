@@ -1,12 +1,30 @@
 # AvatarCreator
 
+correr python scripts\match_pieces.py curry
+
+1. Abre PowerShell y ve a la carpeta del proyecto:
+
+cd "C:\Users\USER\dev\Nueva carpeta\AvatarCreator"
+
+2. Copia tu foto nueva a algún lugar fácil de escribir, por ejemplo directo a la carpeta queries del proyecto (así ni tienes que escribir la ruta completa):
+
+copy "C:\Users\USER\Downloads\miFoto.jpg" queries\
+
+3. Corre el comando, apuntando a esa foto:
+
+.venv\Scripts\python.exe scripts\match_pieces.py queries\miFoto.jpg
+python scripts\match_pieces.py queries\miFoto.jpg
+python scripts\match_pieces.py "queries\mi_foto_nueva.jpg"
+start "_cache\previews\curry_match.png"
+
 Turns a photo of a face into a Lego-style avatar by matching each facial region (eyes, eyebrows,
 nose, mouth, face shape, hair, beard, skin tone) against a bank of Lego piece artwork, using
 landmark-based crops, learned embeddings, and per-category vector search.
 
-Everything currently lives in a single Colab notebook, [`Pipeline.ipynb`](Pipeline.ipynb), which is
-both the pipeline implementation and the measurement rig used to validate it before it becomes a
-service.
+The original implementation and measurement rig is the Colab notebook
+[`scripts/Pipeline.ipynb`](scripts/Pipeline.ipynb). The same pipeline now also exists as an
+object-oriented package in [`src/avatar_creator`](src/avatar_creator) (see
+[OOP package](#oop-package-src) below); the notebook is kept as the reference it was ported from.
 
 ## How it works
 
@@ -113,7 +131,7 @@ category coverage. Two scoping decisions were made to organize it:
 
 ## Running it
 
-1. Open `Pipeline.ipynb` in Google Colab.
+1. Open `scripts/Pipeline.ipynb` in Google Colab.
 2. **Runtime → Change runtime type → T4 GPU** (CPU works, but indexing a large bank in cell 8
    will be slow).
 3. Edit `ROOT` in cell 4 to point at your Drive folder, laid out as above.
@@ -126,6 +144,44 @@ category coverage. Two scoping decisions were made to organize it:
    the minimum for a number to exist; five is where it starts to mean something.
 7. Set `ENCODER` (cell 7) from cell 10's measured routing, not from assumption.
 8. Run cell 12 to persist artifacts (`manifest.json`, `*.vectors.npy`, `*.ids.json`, `*.faiss`).
+
+## OOP package (`src/`)
+
+Layered (DDD) so dependencies only point inwards: `presentation → application → domain ←
+ports ← infrastructure`.
+
+```
+src/avatar_creator/
+├── domain/            pure rules: FaceRegion enum, RegionSpec, crop geometry, PieceRanker
+├── ports/             contracts: LandmarkDetector, RegionEncoder, SimilaritySearcher, AssetRepository, ...
+├── application/       AvatarRecognizer (Facade), one RegionRecognizer per region,
+│                      RecognizerRegistry (enum-keyed), EmbeddingBankBuilder, AvatarCompositor, RoutingEvaluator
+├── infrastructure/    MediaPipe, ArcFace, CLIP, FAISS, deltaE, pickle cache, filesystem, matplotlib
+└── presentation/      CLI + PipelineContainer (composition root, the only place that knows every class)
+```
+
+Each region (`EyeRecognizer`, `EyebrowsRecognizer`, `NoseRecognizer`, `MouthRecognizer`,
+`FaceShapeRecognizer`, `HairRecognizer`, `BeardRecognizer`, `SkinToneRecognizer`) is a few lines: it
+declares its `RegionSpec` (landmarks, crop framing, encoder) and inherits everything else from
+`RegionRecognizer`. **Adding a region** = one `FaceRegion` member + one recognizer subclass + one line
+in `RecognizerRegistry`.
+
+```powershell
+pip install -e . --no-deps                       # once, inside the venv (deps are in requirements-local.txt)
+python -m avatar_creator preview-crops curry     # crop grid (check this first)
+python -m avatar_creator match curry drake       # top matches per region (--mode direct|reference|hybrid)
+python -m avatar_creator avatar curry            # + assembled avatar image
+python -m avatar_creator evaluate                # leave-one-out ArcFace vs CLIP (needs >=2 refs/piece)
+python -m avatar_creator export                  # vectors / FAISS indices / manifest -> artifacts/
+python -m unittest discover -s tests -t .        # unit tests (no models needed)
+```
+
+Results are identical to `scripts/match_pieces.py` (same ids and scores, direct and reference
+mode). `scripts/preview_crops.py` and `scripts/match_pieces.py` are kept untouched as that baseline.
+
+**Cache gotcha:** `_cache/*.pkl` is keyed only by region/encoder/mode, not by the piece files or
+`RegionSpec`. If you add/remove pieces or tune a crop config, delete `_cache/` (or pass
+`--cache-dir`), otherwise results silently use stale vectors.
 
 ## Open question / next step
 
