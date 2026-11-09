@@ -7,6 +7,7 @@ from typing import Sequence
 
 from avatar_creator.domain.models.match_mode import MatchMode
 from avatar_creator.domain.no_face_detected_error import NoFaceDetectedError
+from avatar_creator.domain.photo_download_error import PhotoDownloadError
 from avatar_creator.infrastructure.filesystem.project_paths import ProjectPaths
 from avatar_creator.presentation.data_report import DataReport
 from avatar_creator.presentation.match_report import MatchReport
@@ -38,8 +39,8 @@ class AvatarCli:
         command = getattr(self, f"_cmd_{args.command.replace('-', '_')}")
         try:
             return command(container, args)
-        except FileNotFoundError as error:
-            # A mistyped photo name is a user error, not a crash: say so and exit non-zero.
+        except (FileNotFoundError, PhotoDownloadError) as error:
+            # A mistyped photo name or a bad link is a user error, not a crash: say so and exit non-zero.
             print(f"error: {error}", file=sys.stderr)
             return 2
 
@@ -85,10 +86,19 @@ class AvatarCli:
             handler.setFormatter(logging.Formatter("%(message)s"))
             logger.addHandler(handler)
 
+    @staticmethod
+    def _resolve_photo(container: PipelineContainer, name: str) -> Path:
+        """A photo argument may be a URL (downloaded into queries/), a path, or a name in queries/."""
+        if name.lower().startswith(("http://", "https://")):
+            path = container.photo_downloader.download(name, container.paths.queries_dir)
+            print(f"downloaded {name} -> {path}")
+            return path
+        return container.assets.resolve_query(name)
+
     # ---- commands ------------------------------------------------------------------------
     def _cmd_preview_crops(self, container: PipelineContainer, args: argparse.Namespace) -> int:
         print(DataReport(container.assets).render(), end="\n\n")
-        photos = [container.assets.resolve_query(p) for p in args.photos] or container.assets.list_queries()
+        photos = [self._resolve_photo(container, p) for p in args.photos] or container.assets.list_queries()
         if not photos:
             print(f"No query photos found in {container.paths.queries_dir} and none passed as arguments.")
             print("Drop a face photo into queries/ and re-run.")
@@ -118,7 +128,7 @@ class AvatarCli:
         print()
         report, failed = MatchReport(), 0
         for name in args.photos:
-            photo = container.assets.resolve_query(name)
+            photo = self._resolve_photo(container, name)
             try:
                 selection = recognizer.recognize(photo, k=args.k)
             except NoFaceDetectedError:
